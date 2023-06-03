@@ -1,0 +1,27 @@
+version: '3.7'
+
+services:
+  # required ENV vars:
+  # DISCORD_TOKEN
+  # DATABASE_URL
+  elexis:
+    image: quiz_bot:latest
+    env_file: .env
+    command: ["quiz_bot"]
+    build:
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+  # required ENV vars:
+  # POSTGRES_PASSWORD
+  # POSTGRES_USER
+  db:
+    image: postgres:latest
+    volumes:
+      - db_data:/var/lib/postgresql/data/
+    env_file: .env
+    ports:
+      - '5432:5432'
+volumes:
+  db_data:
+    driver: local
