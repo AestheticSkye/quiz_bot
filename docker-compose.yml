@@ -4,7 +4,7 @@ services:
   # required ENV vars:
   # DISCORD_TOKEN
   # DATABASE_URL
-  elexis:
+  quiz_bot:
     image: quiz_bot:latest
     env_file: .env
     command: ["quiz_bot"]
