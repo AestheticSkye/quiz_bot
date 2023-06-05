@@ -9,6 +9,7 @@ use crate::{Context, Error};
 #[command(prefix_command, slash_command, subcommands("new", "add", "run"))]
 pub async fn quiz(_: Context<'_>) -> Result<(), Error> { Ok(()) }
 
+/// Create a new quiz
 #[command(prefix_command, slash_command)]
 pub async fn new(ctx: Context<'_>, title: String) -> Result<(), Error> {
 	let quiz_creation = ctx
@@ -24,6 +25,7 @@ pub async fn new(ctx: Context<'_>, title: String) -> Result<(), Error> {
 #[command(prefix_command, slash_command, subcommands("question", "answer"))]
 pub async fn add(_ctx: Context<'_>) -> Result<(), Error> { Ok(()) }
 
+/// Add a question to the quiz you're currently editing
 #[command(prefix_command, slash_command)]
 pub async fn question(ctx: Context<'_>, text: String) -> Result<(), Error> {
 	let Some(quiz_creation) = ctx
@@ -48,6 +50,7 @@ pub async fn question(ctx: Context<'_>, text: String) -> Result<(), Error> {
 	Ok(())
 }
 
+/// And an answer to the last added question, at least one answer for each question has to be true
 #[command(prefix_command, slash_command)]
 pub async fn answer(ctx: Context<'_>, text: String, correct: bool) -> Result<(), Error> {
 	let Some(quiz_creation) = ctx
@@ -70,6 +73,7 @@ pub async fn answer(ctx: Context<'_>, text: String, correct: bool) -> Result<(),
 	Ok(())
 }
 
+/// Run a quiz
 #[command(prefix_command, slash_command)]
 pub async fn run(ctx: Context<'_>, quiz_id: String) -> Result<(), Error> {
 	let Ok(quiz_id) = Uuid::try_parse(&quiz_id) else {
