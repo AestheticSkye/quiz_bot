@@ -2,10 +2,10 @@ mod commands;
 mod database;
 
 use dotenvy::dotenv;
-pub use entity::answer::Model as Answer;
-pub use entity::question::Model as Question;
-pub use entity::quiz::Model as Quiz;
-pub use entity::quiz_creation::Model as QuizCreation;
+use entity::answer::Model as Answer;
+use entity::question::Model as Question;
+use entity::quiz::Model as Quiz;
+use entity::quiz_creation::Model as QuizCreation;
 use poise::command;
 use poise::serenity_prelude::GatewayIntents;
 use tracing::info;
@@ -32,7 +32,7 @@ async fn main() {
 		.init();
 
 	let options = poise::FrameworkOptions {
-		commands: vec![hello(), quiz()],
+		commands: vec![quiz()],
 		prefix_options: poise::PrefixFrameworkOptions {
 			prefix: Some("$".into()),
 			// additional_prefixes: vec![poise::Prefix::Regex(

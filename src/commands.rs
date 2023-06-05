@@ -15,7 +15,7 @@ pub async fn new(ctx: Context<'_>, title: String) -> Result<(), Error> {
 	let quiz_creation = ctx
 		.data()
 		.save_quiz_creation(*ctx.author().id.as_u64(), &title)
-		.await;
+		.await?;
 
 	reply(&ctx, &format!("Your quiz ID is {}.\nAdd questions by using `/quiz add question`.\nStart the quiz by using `/quiz start`", quiz_creation.id)).await?;
 
@@ -31,12 +31,12 @@ pub async fn question(ctx: Context<'_>, text: String) -> Result<(), Error> {
 	let Some(quiz_creation) = ctx
 		.data()
 		.fetch_quiz_creation(*ctx.author().id.as_u64())
-		.await else {
+		.await? else {
 		reply(&ctx, "You have not created a quiz yet, create one by using `/quiz new`").await?;
 		return Ok(())
 	};
 
-	ctx.data().add_question(quiz_creation, &text).await;
+	ctx.data().add_question(&quiz_creation, &text).await?;
 
 	reply(
 		&ctx,
@@ -56,17 +56,17 @@ pub async fn answer(ctx: Context<'_>, text: String, correct: bool) -> Result<(),
 	let Some(quiz_creation) = ctx
 		.data()
 		.fetch_quiz_creation(*ctx.author().id.as_u64())
-		.await else {
+		.await? else {
 		reply(&ctx, "You have not created a quiz yet, create one by using `/quiz new`").await?;
 		return Ok(())
 	};
 
-	let Some(question) = ctx.data().fetch_current_creation_question(quiz_creation).await else {
+	let Some(question) = ctx.data().fetch_current_creation_question(quiz_creation).await? else {
 		reply(&ctx, "You have not added any questions yet, create one by using `/quiz add question").await?;
 		return Ok(())
 	};
 
-	ctx.data().add_answer(question, &text, correct).await;
+	ctx.data().add_answer(&question, &text, correct).await;
 
 	reply(&ctx, &format!("Answer `{}` added.\n", text)).await?;
 
@@ -81,15 +81,15 @@ pub async fn run(ctx: Context<'_>, quiz_id: String) -> Result<(), Error> {
 		return Ok(())
 	};
 
-	let Some(quiz) = ctx.data().fetch_quiz(&quiz_id).await else {
+	let Some(quiz) = ctx.data().fetch_quiz(&quiz_id).await? else {
 		ctx.say("Cannot find quiz under that id.").await?;
 		return Ok(())
 	};
 
-	let questions = ctx.data().fetch_questions(&quiz).await;
+	let questions = ctx.data().fetch_questions(&quiz).await?;
 
 	for question in questions {
-		let answers = ctx.data().fetch_answers(&question).await;
+		let answers = ctx.data().fetch_answers(&question).await?;
 
 		let mut reply = format!("**Question: {}\n**", question.text);
 
