@@ -66,7 +66,12 @@ async fn main() {
 	let framework = poise::Framework::builder()
 		.options(options)
 		.token(std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN"))
-		.intents(GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT)
+		.intents(
+			GatewayIntents::non_privileged()
+				| GatewayIntents::MESSAGE_CONTENT
+				| GatewayIntents::DIRECT_MESSAGES
+				| GatewayIntents::GUILD_MESSAGE_REACTIONS,
+		)
 		.setup(|ctx, ready, framework| {
 			Box::pin(async move {
 				info!("Logged in as {}", ready.user.name);
