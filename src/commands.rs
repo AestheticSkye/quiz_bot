@@ -1,81 +1,49 @@
+// Due to empty commands with subcommands
+#![allow(clippy::unused_async)]
+
+mod creation_commands;
+
 use std::time::Duration;
 
 use poise::command;
 use tokio::time::sleep;
 use uuid::Uuid;
 
+use crate::commands::creation_commands::{add, new};
 use crate::{Context, Error};
 
-#[command(prefix_command, slash_command, subcommands("new", "add", "run"))]
+#[command(
+	prefix_command,
+	slash_command,
+	subcommands("new", "add", "run", "list")
+)]
 pub async fn quiz(_: Context<'_>) -> Result<(), Error> { Ok(()) }
 
-/// Create a new quiz
 #[command(prefix_command, slash_command)]
-pub async fn new(ctx: Context<'_>, title: String) -> Result<(), Error> {
-	let quiz_creation = ctx
+async fn list(ctx: Context<'_>) -> Result<(), Error> {
+	let quizzes = ctx
 		.data()
-		.save_quiz_creation(*ctx.author().id.as_u64(), &title)
+		.fetch_all_quizzes(*ctx.author().id.as_u64())
 		.await?;
 
-	reply(&ctx, &format!("Your quiz ID is {}.\nAdd questions by using `/quiz add question`.\nStart the quiz by using `/quiz start`", quiz_creation.id)).await?;
+	if quizzes.is_empty() {
+		reply(&ctx, "You have no quizzes yet").await?;
+		return Ok(());
+	}
 
-	Ok(())
-}
+	let response: String = quizzes
+		.into_iter()
+		.map(|quiz| format!("`{}` {}\n", quiz.id, quiz.text))
+		.collect();
 
-#[command(prefix_command, slash_command, subcommands("question", "answer"))]
-pub async fn add(_ctx: Context<'_>) -> Result<(), Error> { Ok(()) }
-
-/// Add a question to the quiz you're currently editing
-#[command(prefix_command, slash_command)]
-pub async fn question(ctx: Context<'_>, text: String) -> Result<(), Error> {
-	let Some(quiz_creation) = ctx
-		.data()
-		.fetch_quiz_creation(*ctx.author().id.as_u64())
-		.await? else {
-		reply(&ctx, "You have not created a quiz yet, create one by using `/quiz new`").await?;
-		return Ok(())
-	};
-
-	ctx.data().add_question(&quiz_creation, &text).await?;
-
-	reply(
-		&ctx,
-		&format!(
-			"Question `{}` added.\nAdd answers to this question by using `/quiz add answer`",
-			text
-		),
-	)
-	.await?;
-
-	Ok(())
-}
-
-/// And an answer to the last added question, at least one answer for each question has to be true
-#[command(prefix_command, slash_command)]
-pub async fn answer(ctx: Context<'_>, text: String, correct: bool) -> Result<(), Error> {
-	let Some(quiz_creation) = ctx
-		.data()
-		.fetch_quiz_creation(*ctx.author().id.as_u64())
-		.await? else {
-		reply(&ctx, "You have not created a quiz yet, create one by using `/quiz new`").await?;
-		return Ok(())
-	};
-
-	let Some(question) = ctx.data().fetch_current_creation_question(quiz_creation).await? else {
-		reply(&ctx, "You have not added any questions yet, create one by using `/quiz add question").await?;
-		return Ok(())
-	};
-
-	ctx.data().add_answer(&question, &text, correct).await;
-
-	reply(&ctx, &format!("Answer `{}` added.\n", text)).await?;
+	reply(&ctx, &response).await?;
 
 	Ok(())
 }
 
 /// Run a quiz
 #[command(prefix_command, slash_command)]
-pub async fn run(ctx: Context<'_>, quiz_id: String) -> Result<(), Error> {
+async fn run(ctx: Context<'_>, quiz_id: String) -> Result<(), Error> {
 	let Ok(quiz_id) = Uuid::try_parse(&quiz_id) else {
 		ctx.say("Invalid quiz ID.").await?;
 		return Ok(())
@@ -94,7 +62,7 @@ pub async fn run(ctx: Context<'_>, quiz_id: String) -> Result<(), Error> {
 		let mut reply = format!("**Question: {}\n**", question.text);
 
 		answers.iter().enumerate().for_each(|(index, answer)| {
-			reply += format!("{}. {}\n", index + 1, answer.text).as_str()
+			reply += format!("{}. {}\n", index + 1, answer.text).as_str();
 		});
 
 		ctx.say(reply).await?;
@@ -105,7 +73,7 @@ pub async fn run(ctx: Context<'_>, quiz_id: String) -> Result<(), Error> {
 	Ok(())
 }
 
-async fn reply(ctx: &Context<'_>, text: &str) -> Result<(), Error> {
+pub async fn reply(ctx: &Context<'_>, text: &str) -> Result<(), Error> {
 	ctx.send(|b| b.content(text).ephemeral(true).reply(true))
 		.await?;
 

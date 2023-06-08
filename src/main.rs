@@ -1,3 +1,5 @@
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used)]
+
 mod commands;
 mod database;
 
@@ -10,7 +12,7 @@ use poise::command;
 use poise::serenity_prelude::GatewayIntents;
 use tracing::info;
 
-use crate::commands::quiz;
+use crate::commands::{quiz, reply};
 use crate::database::Database;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -24,7 +26,7 @@ pub async fn hello(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), poise::serenity_prelude::Error> {
 	dotenv().expect("Failed to find .env file");
 	tracing_subscriber::fmt()
 		.with_test_writer()
@@ -54,6 +56,14 @@ async fn main() {
 		},
 		on_error: |err| {
 			Box::pin(async move {
+				let Some(ctx) = err.ctx() else {
+					println!("Failed to execute command");
+					return
+				};
+				reply(&ctx, "Error occurred while executing command")
+					.await
+					.expect("Found error when while responding to error, whoops");
+
 				println!(
 					"Failed to execute command {:?}!",
 					err.ctx().map(|ctx| ctx.command().qualified_name.clone())
@@ -62,6 +72,8 @@ async fn main() {
 		},
 		..Default::default()
 	};
+
+	let db = Database::new().await;
 
 	let framework = poise::Framework::builder()
 		.options(options)
@@ -76,9 +88,9 @@ async fn main() {
 			Box::pin(async move {
 				info!("Logged in as {}", ready.user.name);
 				poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-				Ok(Database::new().await.unwrap())
+				db
 			})
 		});
 
-	framework.run().await.unwrap();
+	framework.run().await
 }

@@ -12,7 +12,8 @@ use uuid::Uuid;
 use crate::{Answer, Error, Question, Quiz, QuizCreation};
 
 pub struct Database {
-	connection: DatabaseConnection,
+	connection:     DatabaseConnection,
+	active_quizzes: Vec<Uuid>,
 }
 
 impl Database {
@@ -26,7 +27,23 @@ impl Database {
 
 		info!("Connected to database at {}", database_url);
 
-		Ok(Database { connection })
+		Ok(Self {
+			connection,
+			active_quizzes: vec![],
+		})
+	}
+
+	pub fn is_quiz_active(&self, quiz: &Quiz) -> bool { self.active_quizzes.contains(&quiz.id) }
+
+	pub fn quit_quiz(&mut self, quiz: &Quiz) {
+		let Some(index) = self
+			.active_quizzes
+			.iter()
+			.position(|id| *id == quiz.id) else {
+			return;
+		};
+
+		self.active_quizzes.remove(index);
 	}
 
 	pub async fn save_quiz_creation(
@@ -34,11 +51,11 @@ impl Database {
 		owner_id: u64,
 		text: &str,
 	) -> Result<QuizCreation, Error> {
-		let quiz = self.save_quiz(owner_id, text).await;
+		let quiz = self.save_quiz(owner_id, text).await?;
 
 		let quiz_creation = quiz_creation::ActiveModel {
 			id:                  Set(quiz.id),
-			owner_id:            Set(owner_id.try_into().unwrap()),
+			owner_id:            Set(owner_id.try_into()?),
 			current_question_id: NotSet,
 		};
 
@@ -48,6 +65,15 @@ impl Database {
 	pub async fn fetch_quiz(&self, quiz_id: &Uuid) -> Result<Option<Quiz>, Error> {
 		Ok(prelude::Quiz::find_by_id(*quiz_id)
 			.one(&self.connection)
+			.await?)
+	}
+
+	pub async fn fetch_all_quizzes(&self, owner_id: u64) -> Result<Vec<Quiz>, Error> {
+		let owner_id: i64 = owner_id.try_into()?;
+
+		Ok(prelude::Quiz::find()
+			.filter(quiz::Column::OwnerId.eq(owner_id))
+			.all(&self.connection)
 			.await?)
 	}
 
@@ -105,7 +131,12 @@ impl Database {
 		Ok(quiz_creation.update(&self.connection).await?)
 	}
 
-	pub async fn add_answer(&self, question: &Question, text: &str, correct: bool) {
+	pub async fn add_answer(
+		&self,
+		question: &Question,
+		text: &str,
+		correct: bool,
+	) -> Result<(), Error> {
 		let answer = answer::ActiveModel {
 			id:          NotSet,
 			text:        Set(text.to_owned()),
@@ -113,23 +144,26 @@ impl Database {
 			question_id: Set(question.id),
 		};
 
-		answer.insert(&self.connection).await.unwrap();
+		answer.insert(&self.connection).await?;
+		Ok(())
 	}
 
-	async fn save_quiz(&self, owner_id: u64, text: &str) -> Quiz {
+	async fn save_quiz(&self, owner_id: u64, text: &str) -> Result<Quiz, Error> {
 		let quiz = quiz::ActiveModel {
 			id:       Set(Uuid::new_v4()),
-			owner_id: Set(owner_id.try_into().unwrap()),
+			owner_id: Set(owner_id.try_into()?),
 			text:     Set(text.to_owned()),
 		};
 
-		quiz.insert(&self.connection)
+		Ok(quiz
+			.insert(&self.connection)
 			.await
-			.expect("Failed to insert quiz")
+			.expect("Failed to insert quiz"))
 	}
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used)]
 async fn test() {
 	use dotenvy::dotenv;
 
@@ -149,5 +183,5 @@ async fn test() {
 		.unwrap()
 		.unwrap();
 
-	db.add_answer(&question, "straight", false).await;
+	db.add_answer(&question, "straight", false).await.unwrap();
 }
