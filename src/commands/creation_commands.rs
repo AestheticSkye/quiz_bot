@@ -17,7 +17,9 @@ pub async fn new(ctx: Context<'_>, title: String) -> Result<(), Error> {
 }
 
 #[command(prefix_command, slash_command, subcommands("question", "answer"))]
-pub async fn add(_ctx: Context<'_>) -> Result<(), Error> { Ok(()) }
+pub async fn add(_ctx: Context<'_>) -> Result<(), Error> {
+	Ok(())
+}
 
 /// Add a question to the quiz you're currently editing
 #[command(prefix_command, slash_command)]
@@ -35,8 +37,7 @@ pub async fn question(ctx: Context<'_>, text: String) -> Result<(), Error> {
 	reply(
 		&ctx,
 		&format!(
-			"Question `{}` added.\nAdd answers to this question by using `/quiz add answer`",
-			text
+			"Question `{text}` added.\nAdd answers to this question by using `/quiz add answer`",
 		),
 	)
 	.await?;
@@ -68,7 +69,7 @@ pub async fn answer(ctx: Context<'_>, text: String, correct: bool) -> Result<(),
 
 	ctx.data().add_answer(&question, &text, correct).await?;
 
-	reply(&ctx, &format!("Answer `{}` added.\n", text)).await?;
+	reply(&ctx, &format!("Answer `{text}` added.\n")).await?;
 
 	Ok(())
 }

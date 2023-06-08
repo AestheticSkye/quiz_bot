@@ -12,28 +12,33 @@ use uuid::Uuid;
 use crate::{Answer, Error, Question, Quiz, QuizCreation};
 
 pub struct Database {
-	connection:     DatabaseConnection,
+	connection: DatabaseConnection,
 	active_quizzes: Vec<Uuid>,
 }
 
 impl Database {
-	pub async fn new() -> Result<Self, Error> {
-		let database_url = env::var("DATABASE_URL")?;
+	pub async fn new() -> Self {
+		let database_url = env::var("DATABASE_URL").expect("Could not find database URL");
 
-		let connection: DatabaseConnection =
-			sea_orm::Database::connect(database_url.clone()).await?;
+		let connection: DatabaseConnection = sea_orm::Database::connect(database_url.clone())
+			.await
+			.expect("Could nto connect to database");
 
-		Migrator::up(&connection, None).await?;
+		Migrator::up(&connection, None)
+			.await
+			.expect("Could not migrate database");
 
 		info!("Connected to database at {}", database_url);
 
-		Ok(Self {
+		Self {
 			connection,
 			active_quizzes: vec![],
-		})
+		}
 	}
 
-	pub fn is_quiz_active(&self, quiz: &Quiz) -> bool { self.active_quizzes.contains(&quiz.id) }
+	pub fn is_quiz_active(&self, quiz: &Quiz) -> bool {
+		self.active_quizzes.contains(&quiz.id)
+	}
 
 	pub fn quit_quiz(&mut self, quiz: &Quiz) {
 		let Some(index) = self
@@ -54,8 +59,8 @@ impl Database {
 		let quiz = self.save_quiz(owner_id, text).await?;
 
 		let quiz_creation = quiz_creation::ActiveModel {
-			id:                  Set(quiz.id),
-			owner_id:            Set(owner_id.try_into()?),
+			id: Set(quiz.id),
+			owner_id: Set(owner_id.try_into()?),
 			current_question_id: NotSet,
 		};
 
@@ -117,8 +122,8 @@ impl Database {
 		question: &str,
 	) -> Result<QuizCreation, Error> {
 		let question = question::ActiveModel {
-			id:      NotSet,
-			text:    Set(question.to_owned()),
+			id: NotSet,
+			text: Set(question.to_owned()),
 			quiz_id: Set(quiz_creation.id),
 		};
 
@@ -138,9 +143,9 @@ impl Database {
 		correct: bool,
 	) -> Result<(), Error> {
 		let answer = answer::ActiveModel {
-			id:          NotSet,
-			text:        Set(text.to_owned()),
-			correct:     Set(correct),
+			id: NotSet,
+			text: Set(text.to_owned()),
+			correct: Set(correct),
 			question_id: Set(question.id),
 		};
 
@@ -150,9 +155,9 @@ impl Database {
 
 	async fn save_quiz(&self, owner_id: u64, text: &str) -> Result<Quiz, Error> {
 		let quiz = quiz::ActiveModel {
-			id:       Set(Uuid::new_v4()),
+			id: Set(Uuid::new_v4()),
 			owner_id: Set(owner_id.try_into()?),
-			text:     Set(text.to_owned()),
+			text: Set(text.to_owned()),
 		};
 
 		Ok(quiz
@@ -169,7 +174,7 @@ async fn test() {
 
 	dotenv().unwrap();
 
-	let db = Database::new().await.unwrap();
+	let db = Database::new().await;
 
 	// db.save_quiz_creation(42, "Test").await;
 

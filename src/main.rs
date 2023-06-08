@@ -88,7 +88,7 @@ async fn main() -> Result<(), poise::serenity_prelude::Error> {
 			Box::pin(async move {
 				info!("Logged in as {}", ready.user.name);
 				poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-				db
+				Ok(db)
 			})
 		});
 
