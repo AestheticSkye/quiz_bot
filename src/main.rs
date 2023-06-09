@@ -27,7 +27,7 @@ pub async fn hello(ctx: Context<'_>) -> Result<(), Error> {
 
 #[tokio::main]
 async fn main() -> Result<(), poise::serenity_prelude::Error> {
-	dotenv().expect("Failed to find .env file");
+	dotenv().ok();
 	tracing_subscriber::fmt()
 		.with_test_writer()
 		// .with_max_level(tracing::Level::DEBUG)
