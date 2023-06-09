@@ -22,7 +22,7 @@ impl Database {
 
 		let connection: DatabaseConnection = sea_orm::Database::connect(database_url.clone())
 			.await
-			.expect("Could nto connect to database");
+			.expect("Could not connect to database");
 
 		Migrator::up(&connection, None)
 			.await
