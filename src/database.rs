@@ -6,14 +6,21 @@ use sea_orm::ActiveValue::Set;
 use sea_orm::{
 	ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, NotSet, QueryFilter,
 };
+use tokio::sync::Mutex;
 use tracing::info;
 use uuid::Uuid;
 
 use crate::{Answer, Error, Question, Quiz, QuizCreation};
 
+#[derive(Clone)]
+pub struct ActiveQuiz {
+	pub owner_id: u64,
+	pub channel_id: u64,
+}
+
 pub struct Database {
 	connection: DatabaseConnection,
-	active_quizzes: Vec<Uuid>,
+	active_quizzes: Mutex<Vec<ActiveQuiz>>,
 }
 
 impl Database {
@@ -32,23 +39,8 @@ impl Database {
 
 		Self {
 			connection,
-			active_quizzes: vec![],
+			active_quizzes: Mutex::new(vec![]),
 		}
-	}
-
-	pub fn is_quiz_active(&self, quiz: &Quiz) -> bool {
-		self.active_quizzes.contains(&quiz.id)
-	}
-
-	pub fn quit_quiz(&mut self, quiz: &Quiz) {
-		let Some(index) = self
-			.active_quizzes
-			.iter()
-			.position(|id| *id == quiz.id) else {
-			return;
-		};
-
-		self.active_quizzes.remove(index);
 	}
 
 	pub async fn save_quiz_creation(
@@ -151,6 +143,34 @@ impl Database {
 
 		answer.insert(&self.connection).await?;
 		Ok(())
+	}
+
+	pub async fn add_active_quiz(&self, owner_id: u64, channel_id: u64) {
+		self.active_quizzes.lock().await.push(ActiveQuiz {
+			owner_id,
+			channel_id,
+		});
+	}
+
+	pub async fn remove_active_quiz(&self, channel_id: u64) {
+		if let Some(index) = self
+			.active_quizzes
+			.lock()
+			.await
+			.iter()
+			.position(|active_quiz| active_quiz.channel_id == channel_id)
+		{
+			self.active_quizzes.lock().await.remove(index);
+		}
+	}
+
+	pub async fn fetch_active_quiz(&self, channel_id: u64) -> Option<ActiveQuiz> {
+		let Some(index) = self.active_quizzes.lock()
+			.await.iter().position(|active_quiz| active_quiz.channel_id == channel_id) else {
+			return None
+		};
+
+		Some(self.active_quizzes.lock().await[index].clone())
 	}
 
 	async fn save_quiz(&self, owner_id: u64, text: &str) -> Result<Quiz, Error> {

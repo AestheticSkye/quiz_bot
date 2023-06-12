@@ -1,8 +1,11 @@
+// TODO: Allow quizzes to be edited at any time
+
 use poise::command;
 
 use crate::commands::reply;
 use crate::{Context, Error};
 
+// TODO: Disallow multiple quizzes with the same name from the same author
 /// Create a new quiz
 #[command(prefix_command, slash_command)]
 pub async fn new(ctx: Context<'_>, title: String) -> Result<(), Error> {
@@ -44,12 +47,6 @@ pub async fn question(ctx: Context<'_>, text: String) -> Result<(), Error> {
 
 	Ok(())
 }
-
-// #[command(prefix_command, slash_command)]
-// pub async fn end(ctx: Context<'_>) -> Result<(), Error> {
-//
-// 	todo!()
-// }
 
 /// And an answer to the last added question, at least one answer for each question has to be true
 #[command(prefix_command, slash_command)]
